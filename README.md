@@ -1,8 +1,4 @@
 # PC AutoBackup for Linux and OS X for Samsung digital cameras #
-
-This project is in active development and is currently a work-in-progress.
-
-
 # Docker #
 ## Building ##
 docker build -t autobackup .
