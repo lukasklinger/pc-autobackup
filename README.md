@@ -2,13 +2,21 @@
 
 This project is in active development and is currently a work-in-progress.
 
-If you'd like to donate to the development of PC AutoBackup use the following link:
 
-[![](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=HRSE2F7539HR8&lc=US&item_name=PC%20AutoBackup%20Development&item_number=pc%2dautobackup&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted)
+# Docker #
+## Building ##
+docker build -t autobackup .
 
+## Running ##
+docker run --name autobackup --network host -v /PATH_FOR_PHOTOS_ON_HOST:/root autobackup
 
----
+## Configure Server ##
+Open .pc_autobackup.cfg in mounted docker volume and change "127.0.0.1" to your server's IP address. Restart the docker container. (docker stop autobackup && docker start autobackup)
 
+## Manually Configure Camera ##
+Mount SD card and copy the folder "dlna_web_root" into root. Open .pc_autobackup.cfg in mounted docker volume and copy both server_name and uuid into the file "SAMSUNGAutoBackupDESC.ini" in "dlna_web_root" on the SD card. No need to change the MAC address setting in "SAMSUNGAutoBackupDESC.ini".
+
+Insert the SD card into the camera and you can now run Auto Backup.
 
 # Getting Started #
 
