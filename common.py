@@ -21,13 +21,20 @@ CAMERA_CONFIG = {
                                               'SAMSUNGAUTOBACKUPDESC.INI')},
   'SAMSUNG WB350F': {'desc_file': os.path.join('DLNA_WEB_ROOT',
                                               'SAMSUNGAutoBackupDESC.ini')},
+  'SAMSUNG Camera-MSCP': {'desc_file': os.path.join('dlna_web_root',
+                                               'SAMSUNGAutoBackupDESC.ini')},
   'SAMSUNG NX1000': {'desc_file': os.path.join('dlna_web_root',
+                                               'SAMSUNGAutoBackupDESC.ini')},
+  'SAMSUNG NX500': {'desc_file': os.path.join('dlna_web_root',
                                                'SAMSUNGAutoBackupDESC.ini')}}
+
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.expanduser("~/.pc_autobackup.cfg")
 CAMERA_INFO_FILE = [os.path.join('system', 'device.xml'),
                     os.path.join('SYSTEM', 'DEVICE.XML'),
-                    os.path.join('SYSTEM', 'Device.xml')]
+                    os.path.join('SYSTEM', 'Device.xml'),
+                    os.path.join('config', 'RVF', 'xml', 'DeviceDescription.xml'),
+                    os.path.join('config', 'DMC', 'MSCP', 'xml', 'DeviceDescription.xml')]
 CAMERA_MODEL = re.compile(r'<BaseModelName\s*value="(.*)"\s*/>')
 
 DESC_SERVER_NAME = re.compile(r'friendlyName\s*=\s*(.*)')
@@ -63,7 +70,7 @@ def EscapeHTML(html):
                 ("'", '&apos;'))
   for old, new in html_codes:
     html = html.replace(old, new)
-  
+
   return html
 
 def GenerateUUID():
@@ -99,13 +106,20 @@ def LoadOrCreateConfig(config_file=None):
                os.path.expanduser('~/PCAutoBackup'))
   if not config.has_option('AUTOBACKUP', 'create_date_subdir'):
     config.set('AUTOBACKUP', 'create_date_subdir', '1')
+  if not config.has_option('AUTOBACKUP', 'default_interface'):
+    try:
+      config.set('AUTOBACKUP', 'default_interface',
+                 socket.gethostbyname(socket.gethostname()))
+    except socket.error:
+      logger.error('Unable to determine IP address. Please set manually!')
+      config.set('AUTOBACKUP', 'default_interface', '127.0.0.1')
   if not config.has_option('AUTOBACKUP', 'server_name'):
     config.set('AUTOBACKUP', 'server_name', '[PC]AutoBackup')
   if not config.has_option('AUTOBACKUP', 'uuid'):
     config.set('AUTOBACKUP', 'uuid', GenerateUUID())
 
-  with open(config_file, 'wb') as file:
-    config.write(file)
+  with open(config_file, 'wb') as config_file:
+    config.write(config_file)
 
   return config
   

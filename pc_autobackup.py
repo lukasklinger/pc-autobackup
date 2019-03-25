@@ -22,6 +22,8 @@ import common
 import ssdp
 import mediaserver
 
+import xml.etree.ElementTree as ET
+
 
 def GetCameraConfig(mountpoint):
   """Get configuration options for a camera.
@@ -40,6 +42,20 @@ def GetCameraConfig(mountpoint):
       device_file = os.path.join(mountpoint, f)
       break
 
+  if 'DeviceDescription.xml' in device_file:
+    tree = ET.parse(device_file)
+    root = tree.getroot()
+    for tag in root.findall('./{urn:schemas-upnp-org:device-1-0}device/{urn:schemas-upnp-org:device-1-0}friendlyName'):
+      camera = tag.text
+
+    print(camera)
+    if camera == "Camera-MSCP":
+      model = camera
+    else:
+      model = camera.split(']')[1]
+    camera_config = common.CAMERA_CONFIG.get( "SAMSUNG %s" % (model), common.CAMERA_CONFIG['default'])
+    return camera_config
+
   if device_file:
     if os.path.isfile(device_file):
       with open(device_file, 'r') as f:
@@ -54,7 +70,7 @@ def GetCameraConfig(mountpoint):
   sys.exit(1)
 
 
-def GetSystemInfo(config_file=None):
+def GetSystemInfo():
   """Log basic system information to the debug logger."""
   logger = logging.getLogger('pc_autobackup')
   logger.debug('Command-line: %s', ' '.join(sys.argv))
@@ -64,22 +80,19 @@ def GetSystemInfo(config_file=None):
   logger.debug('System Information (node): %s', platform.node())
   logger.debug('System Information (hostname): %s', socket.gethostname())
 
-  config = common.LoadOrCreateConfig(config_file)
+  config = common.LoadOrCreateConfig()
   for section in config.sections():
     for option in config.options(section):
       logger.debug('Config (%s): %s = %s', section, option,
                    config.get(section, option))
 
 
-def ImportCameraConfig(mountpoint,config_file=None):
+def ImportCameraConfig(mountpoint):
   """Import the PC AutoBackup settings from a camera.
 
   Args:
     mountpoint: A string containing the path to the cameras SD card
   """
-  if not config_file:
-    config_file = common.CONFIG_FILE
-
   logger = logging.getLogger('pc_autobackup')
 
   camera_config = GetCameraConfig(mountpoint)
@@ -89,7 +102,7 @@ def ImportCameraConfig(mountpoint,config_file=None):
     with open(desc_file, 'r') as f:
       desc_data = f.read()
       logger.info('Loading configuration from camera')
-      config = common.LoadOrCreateConfig(config_file)
+      config = common.LoadOrCreateConfig()
 
       m = common.DESC_SERVER_NAME.search(desc_data)
       if m:
@@ -107,10 +120,10 @@ def ImportCameraConfig(mountpoint,config_file=None):
 
       config.set('AUTOBACKUP', 'server_name', friendly_name)
       config.set('AUTOBACKUP', 'uuid', uuid)
-      with open(config_file, 'wb') as file:
+      with open(common.CONFIG_FILE, 'wb') as config_file:
         logger.info('Saving server configuration')
         try:
-          config.write(file)
+          config.write(config_file)
           logger.info('Configuration saved successfully')
         except IOError as e:
           logger.error('Unable to save configuration: %s', str(e))
@@ -123,7 +136,7 @@ def ImportCameraConfig(mountpoint,config_file=None):
     sys.exit(1)
 
 
-def UpdateCameraConfig(mountpoint, create_desc_file=False, config_file=None):
+def UpdateCameraConfig(mountpoint, create_desc_file=False):
   """Update the PC AutoBackup settings on a camera.
 
   Args:
@@ -145,7 +158,7 @@ def UpdateCameraConfig(mountpoint, create_desc_file=False, config_file=None):
 
   if os.path.isfile(desc_file):
     with open(desc_file, 'wb') as f:
-      config = common.LoadOrCreateConfig(config_file)
+      config = common.LoadOrCreateConfig()
       ini_params = {'mac_address': mac_address,
                     'server_name': config.get('AUTOBACKUP', 'server_name'),
                     'uuid': config.get('AUTOBACKUP', 'uuid')}
@@ -163,8 +176,6 @@ def main():
   parser.add_option('-b', '--bind', dest='bind',
                     help='bind the server to a specific IP',
                     metavar='IP')
-  parser.add_option('--config_file', dest='config_file',
-                    help='change config file location', metavar='FILE')
   parser.add_option('--create_camera_config', dest='create_camera_config',
                     help='create new camera configuration file',
                     metavar='MOUNTPOINT')
@@ -219,10 +230,7 @@ def main():
   console.setFormatter(formatter)
   logger.addHandler(console)
 
-  if not options.config_file:
-    options.config_file = common.CONFIG_FILE
-
-  config = common.LoadOrCreateConfig(options.config_file)
+  config = common.LoadOrCreateConfig()
   update_config = False
 
   if options.bind:
@@ -239,42 +247,34 @@ def main():
     update_config = True
 
   if update_config:
-    with open(options.config_file, 'wb') as config_file:
+    with open(common.CONFIG_FILE, 'wb') as config_file:
       config.write(config_file)
 
   if options.create_camera_config:
-    UpdateCameraConfig(options.create_camera_config, create_desc_file=True,
-                       config_file=options.config_file)
+    UpdateCameraConfig(options.create_camera_config, create_desc_file=True)
     sys.exit(0)
 
   if options.import_camera_config:
-    ImportCameraConfig(options.import_camera_config,
-                       config_file=options.config_file)
+    ImportCameraConfig(options.import_camera_config)
     sys.exit(0)
 
   if options.update_camera_config:
-    UpdateCameraConfig(options.update_camera_config,
-                       config_file=options.config_file)
+    UpdateCameraConfig(options.update_camera_config)
     sys.exit(0)
 
-  if config.has_option('AUTOBACKUP', 'default_interface'):
-    interface = config.get('AUTOBACKUP', 'default_interface')
-    logger.info('PCAutoBackup started on %s', interface)
-  else:
-    interface = ""
-    logger.info('PCAutoBackup started on all interfaces')
-
+  logger.info('PCAutoBackup started on %s', config.get('AUTOBACKUP',
+                                                       'default_interface'))
   logger.info('Server name: %s', config.get('AUTOBACKUP', 'server_name'))
 
   if options.debug:
-    GetSystemInfo(config_file=options.config_file)
+    GetSystemInfo()
 
-  reactor.listenMulticast(1900, ssdp.SSDPServer(options.config_file), listenMultiple=True)
+  reactor.listenMulticast(1900, ssdp.SSDPServer(), listenMultiple=True)
   logger.info('SSDPServer started')
 
-  resource = mediaserver.MediaServer(options.config_file)
+  resource = mediaserver.MediaServer()
   factory = Site(resource)
-  reactor.listenTCP(52235, factory, interface=interface)
+  reactor.listenTCP(52235, factory)
   logger.info('MediaServer started')
 
   reactor.run()
