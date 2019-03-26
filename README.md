@@ -1,7 +1,7 @@
 # PC AutoBackup for Linux and OS X for Samsung digital cameras #
 # Docker #
 ## Building ##
-docker build -t autobackup .
+docker build -t autobackup -f Dockerfile .
 
 ## Running ##
 docker run --name autobackup --network host -v /PATH_FOR_PHOTOS_ON_HOST:/root autobackup
