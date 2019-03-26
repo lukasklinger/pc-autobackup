@@ -1,8 +1,4 @@
 # PC AutoBackup for Linux and OS X for Samsung digital cameras #
-
-This project is in active development and is currently a work-in-progress.
-
-
 # Docker #
 ## Building ##
 docker build -t autobackup .
@@ -45,6 +41,7 @@ Insert the SD card into the camera and you can now run Auto Backup.
   * WB150F
   * WB350F
   * ST200F
+  * NX1100
   * Does it work with your camera? Send me a pull request editing this README.
 
 ## **Tested on the following OS:** ##
